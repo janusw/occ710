@@ -58,13 +58,13 @@ If HTML documentation is not available in your package, you can:
 
   You need to have Tcl and Doxygen 1.8.4 (or above) installed on your system.
   and accessible in your environment (check environment variable PATH).
-  Use batch file *gendoc.bat* on Windows or Bash script *gendoc* on Linux
+  Use batch file [gendoc.bat](gendoc.bat) on Windows or Bash script [gendoc](gendoc) on Linux
   or OS X to (re)generate documentation.
 
 - Read documentation in source plain text (MarkDown) format found in 
-  subfolder *dox*
+  subfolder [dox](dox)
 
-See *dox/dev_guides/documentation/documentation.md* for details.
+See [documentation.md](dox/dev_guides/documentation/documentation.md) for details.
 
 Building
 --------
@@ -72,14 +72,14 @@ Building
 In most cases you need to rebuild OCCT on your platform (OS, compiler) before
 using it in your project, to ensure binary compatibility.
 
-Consult the file *dox/dev_guides/building/building.md* for instructions on
+Consult the file [building.md](dox/dev_guides/building/building.md) for instructions on
 building OCCT from sources on supported platforms.
 
 Version
 -------
 
 The current version of OCCT can be consulted in the file
-*src/Standard/Standard_Version.hxx*
+[Standard_Version.hxx](src/Standard/Standard_Version.hxx)
 
 Development
 -----------
