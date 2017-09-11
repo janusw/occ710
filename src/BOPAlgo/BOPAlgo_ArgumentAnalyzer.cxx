@@ -21,7 +21,7 @@
 #include <BOPCol_IndexedMapOfShape.hxx>
 #include <BOPCol_SequenceOfShape.hxx>
 #include <BOPDS_DS.hxx>
-#include <BOPDS_MapOfPassKey.hxx>
+#include <BOPDS_MapOfPair.hxx>
 #include <BOPTools.hxx>
 #include <BOPTools_AlgoTools.hxx>
 #include <BOPTools_AlgoTools3D.hxx>
@@ -352,7 +352,7 @@ void BOPAlgo_ArgumentAnalyzer::TestSelfInterferences()
     }
     //
     Standard_Integer iErr, n1, n2;
-    BOPDS_MapIteratorMapOfPassKey aItMPK;
+    BOPDS_MapIteratorOfMapOfPair aItMPK;
     BOPCol_ListOfShape anArgs;
     BOPAlgo_CheckerSI aChecker;
     //
@@ -367,12 +367,12 @@ void BOPAlgo_ArgumentAnalyzer::TestSelfInterferences()
     iErr=aChecker.ErrorStatus();
     //
     const BOPDS_DS& aDS=*(aChecker.PDS());
-    const BOPDS_MapOfPassKey& aMPK=aDS.Interferences();
+    const BOPDS_MapOfPair& aMPK=aDS.Interferences();
     //
     aItMPK.Initialize(aMPK);
     for (; aItMPK.More(); aItMPK.Next()) {
-      const BOPDS_PassKey& aPK=aItMPK.Value();
-      aPK.Ids(n1, n2);
+      const BOPDS_Pair& aPK=aItMPK.Value();
+      aPK.Indices(n1, n2);
       if(aDS.IsNewShape(n1) || aDS.IsNewShape(n2)) {
         continue;
       }
@@ -384,12 +384,14 @@ void BOPAlgo_ArgumentAnalyzer::TestSelfInterferences()
       if(ii == 0) {
         aResult.SetShape1(myShape1);
         aResult.AddFaultyShape1(aS1);
-        aResult.AddFaultyShape1(aS2);
+        if (!aS1.IsSame(aS2))
+          aResult.AddFaultyShape1(aS2);
       }
       else {
         aResult.SetShape2(myShape2);
         aResult.AddFaultyShape2(aS1);
-        aResult.AddFaultyShape2(aS2);
+        if (!aS1.IsSame(aS2))
+          aResult.AddFaultyShape2(aS2);
       }
       aResult.SetCheckStatus(BOPAlgo_SelfIntersect);
       myResult.Append(aResult);

@@ -19,13 +19,12 @@
 #include <BOPCol_ListOfInteger.hxx>
 #include <BOPCol_MapOfInteger.hxx>
 #include <BOPDS_CommonBlock.hxx>
-#include <BOPDS_DataMapOfPassKeyListOfPaveBlock.hxx>
 #include <BOPDS_DS.hxx>
 #include <BOPDS_FaceInfo.hxx>
 #include <BOPDS_IndexRange.hxx>
 #include <BOPDS_MapOfPave.hxx>
 #include <BOPDS_MapOfPaveBlock.hxx>
-#include <BOPDS_PassKey.hxx>
+#include <BOPDS_Pair.hxx>
 #include <BOPDS_PaveBlock.hxx>
 #include <BOPDS_ShapeInfo.hxx>
 #include <BOPDS_VectorOfPave.hxx>
@@ -256,6 +255,7 @@ Standard_Integer BOPDS_DS::Append(const BOPDS_ShapeInfo& theSI)
   //
   myLines.Append1()=theSI;
   iX=myLines.Extent()-1;
+  myMapShapeIndex.Bind(theSI.Shape(), iX);
   //
   return iX;
 }
@@ -269,6 +269,7 @@ Standard_Integer BOPDS_DS::Append(const TopoDS_Shape& theS)
   //
   myLines.Append1().SetShape(theS);
   iX=myLines.Extent()-1;
+  myMapShapeIndex.Bind(theS, iX);
   return iX;
 }
 //=======================================================================
@@ -358,20 +359,18 @@ void BOPDS_DS::Init(const Standard_Real theFuzz)
   aAllocator=
     NCollection_BaseAllocator::CommonBaseAllocator();
   //
-  BOPCol_DataMapOfShapeInteger& aMSI=myMapShapeIndex;
   //
   i1=0; 
   i2=0;
   aIt.Initialize(myArguments);
   for (; aIt.More(); aIt.Next()) {
     const TopoDS_Shape& aS=aIt.Value();
-    if (aMSI.IsBound(aS)) {
+    if (myMapShapeIndex.IsBound(aS)) {
       continue;
     }
     aI=Append(aS);
-    aMSI.Bind(aS, aI);
     //
-    InitShape(aI, aS, aAllocator, aMSI);
+    InitShape(aI, aS);
     //
     i2=NbShapes()-1;
     aR.SetIndices(i1, i2);
@@ -658,9 +657,7 @@ void BOPDS_DS::Init(const Standard_Real theFuzz)
 //=======================================================================
 void BOPDS_DS::InitShape
   (const Standard_Integer aI,
-   const TopoDS_Shape& aS,
-   const Handle(NCollection_BaseAllocator)& theAllocator,
-   BOPCol_DataMapOfShapeInteger& aMSI)
+   const TopoDS_Shape& aS)
 {
   Standard_Integer aIx;
   TopoDS_Iterator aIt;
@@ -670,7 +667,7 @@ void BOPDS_DS::InitShape
   aSI.SetShapeType(aS.ShapeType());
   BOPCol_ListOfInteger& aLI=aSI.ChangeSubShapes();
   //
-  BOPCol_MapOfInteger aM(100, theAllocator);
+  BOPCol_MapOfInteger aM;
   //
   aIt1.Initialize(aLI);
   for (; aIt1.More(); aIt1.Next()) {
@@ -680,15 +677,10 @@ void BOPDS_DS::InitShape
   aIt.Initialize(aS);
   for (; aIt.More(); aIt.Next()) {
     const TopoDS_Shape& aSx=aIt.Value();
-    if (aMSI.IsBound(aSx)) {
-      aIx=aMSI.Find(aSx);
-    }
-    else {
-      aIx=Append(aSx);
-      aMSI.Bind(aSx, aIx);
-    }
+    const Standard_Integer* pIx = myMapShapeIndex.Seek(aSx);
+    aIx = (pIx ? *pIx : Append(aSx));
     //
-    InitShape(aIx, aSx, theAllocator, aMSI);
+    InitShape(aIx, aSx);
     //
     if (aM.Add(aIx)) {
       aLI.Append(aIx);
@@ -704,14 +696,14 @@ Standard_Boolean BOPDS_DS::HasInterf(const Standard_Integer theI) const
 {
   Standard_Integer n1, n2;
   Standard_Boolean bRet;
-  BOPDS_MapIteratorMapOfPassKey aIt;
+  BOPDS_MapIteratorOfMapOfPair aIt;
   //
   bRet = Standard_False;
   //
   aIt.Initialize(myInterfTB);
   for (; aIt.More(); aIt.Next()) {
-    const BOPDS_PassKey& aPK = aIt.Value();
-    aPK.Ids(n1, n2);
+    const BOPDS_Pair& aPK = aIt.Value();
+    aPK.Indices(n1, n2);
     if (n1 == theI || n2 == theI) {
       bRet = Standard_True;
       break;
@@ -1012,12 +1004,12 @@ void BOPDS_DS::UpdateCommonBlock(const Handle(BOPDS_CommonBlock)& theCB,
 {
   Standard_Integer nE, iRef, n1, n2;
   BOPDS_ListIteratorOfListOfPaveBlock aItPB, aItPBCB, aItPBN;
-  BOPDS_DataMapIteratorOfDataMapOfPassKeyListOfPaveBlock aItMPKLPB;
   BOPDS_ListOfPaveBlock aLPBN;
-  BOPDS_DataMapOfPassKeyListOfPaveBlock aMPKLPB; 
+  NCollection_DataMap<BOPDS_Pair, BOPDS_ListOfPaveBlock, BOPDS_PairMapHasher> aMPKLPB;
+  NCollection_DataMap<BOPDS_Pair, BOPDS_ListOfPaveBlock, BOPDS_PairMapHasher>::Iterator aItMPKLPB;
   Handle(BOPDS_PaveBlock) aPB;
   Handle(BOPDS_CommonBlock) aCBx;
-  BOPDS_PassKey aPK;
+  BOPDS_Pair aPK;
   //
   const BOPDS_ListOfPaveBlock& aLPBCB=theCB->PaveBlocks();
   if (!aLPBCB.First()->IsToUpdate()){
@@ -1050,7 +1042,7 @@ void BOPDS_DS::UpdateCommonBlock(const Handle(BOPDS_CommonBlock)& theCB,
           aLPB.Append(aPBN);
           //
           aPBN->Indices(n1, n2);
-          aPK.SetIds(n1, n2);
+          aPK.SetIndices(n1, n2);
           if (aMPKLPB.IsBound(aPK)) {
             BOPDS_ListOfPaveBlock& aLPBx=aMPKLPB.ChangeFind(aPK);
             aLPBx.Append(aPBN);
@@ -1061,7 +1053,7 @@ void BOPDS_DS::UpdateCommonBlock(const Handle(BOPDS_CommonBlock)& theCB,
             aMPKLPB.Bind(aPK, aLPBx);
           }
         }
-        aLPB.Remove(aItPB);    
+        aLPB.Remove(aItPB);
         break;
       }
     }

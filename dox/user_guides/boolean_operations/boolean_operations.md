@@ -1080,9 +1080,11 @@ The input data for this step is a *BOPAlgo_Builder* object after building result
 * The result of the operation *Cut12* for arguments *S1* and *S2* contains the parts of argument *S1* that have state **OUT** relative to the opposite argument *S2*.
 * The result of the operation *Cut21* for arguments *S1* and *S2* contains the parts of argument *S2* that have state **OUT** relative to the opposite argument *S1*.
 * For the arguments of collection type (WIRE, SHELL, COMPSOLID) the type will be passed in the result. For example, the result of Common operation between Shell and Wire will be a compound containing Wire.
-* For the arguments of collection type (WIRE, SHELL, COMPSOLID) containing overlapping parts the overlapping parts passed into result will be repeated for each container from the input shapes containing such parts.
-* The result of the operation Fuse for the arguments of collection type (WIRE, SHELL, COMPSOLID) will contain the same number of containers as the arguments. The overlapping parts (EDGES/FACES/SOLIDS) will be shared among them. For example, the result of Fuse operation between two wires will be two wires sharing coinciding edges if any.
-* The result of the operation Common for the arguments of collection type (WIRE, SHELL, COMPSOLID) will consist of the containers containing the same overlapping parts. For example, the result of Common operation between two fully/partially overlapping wires will be two wires containing the same edges.
+* For the arguments of collection type (WIRE, SHELL, COMPSOLID) containing overlapping parts the overlapping parts passed into result will be repeated for each container from the input shapes containing such parts. The containers completely included in other containers will be avoided in the result.
+* For the arguments of collection type (WIRE, SHELL, COMPSOLID) the containers included into result will have the same orientation as the original containers from arguments. In case of duplication its orientation will be defined by the orientation of the first container in arguments. Each container included into result will have coherent orientation of its sub-shapes.
+* The result of the operation Fuse for the arguments of collection type (WIRE, SHELL) will consist of the shapes of the same collection type. The overlapping parts (EDGES/FACES) will be shared among containers, but duplicating containers will be avoided in the result. For example, the result of Fuse operation between two fully coinciding wires will be one wire, but the result of Fuse operation between two partially coinciding wires will be two wires sharing coinciding edges.
+* The result of the operation Fuse for the arguments of type COMPSOLID will consist of the compound containing COMPSOLIDs created from connexity blocks of fused solids.
+* The result of the operation Common for the arguments of collection type (WIRE, SHELL, COMPSOLID) will consist of the unique containers containing the overlapping parts. For example, the result of Common operation between two fully overlapping wires will be one wire containing all splits of edges. The number of wires in the result of Common operation between two partially overlapping wires will be equal to the number of connexity blocks of overlapping edges.
 
 @subsection occt_algorithms_9_4 Examples
 
@@ -1555,7 +1557,7 @@ Let us consider two Wires that have overlapping edges, *W1* is the object and *W
 
 @figure{/user_guides/boolean_operations/images/boolean_image140.png}
  	
-* The result of *Common* operation is a compound containing two Wires both consisting of an overlapping edge. The new Wires are created from the objects:
+* The result of *Common* operation is a compound containing one Wire consisting of an overlapping edge. The new Wire is created from the objects:
 
 @figure{/user_guides/boolean_operations/images/boolean_image141.png}	
 
@@ -2100,10 +2102,10 @@ With the Fuzzy option it is possible to get the expected result -- it is just ne
 
 Fuzzy option is included in interface of Intersection Part (class *BOPAlgo_PaveFiller*) and application programming interface (class  *BRepAlgoAPI_BooleanOperation*)
 
-@subsection occt_algorithms_11a_2 Examples
+@subsubsection occt_algorithms_11a_1_1 Examples
 The following examples demonstrate the advantages of usage Fuzzy option operations over the Basic Operations in typical situations.
 
-@subsubsection occt_algorithms_11a_1_1 Case 1
+#### Case 1
 
 In this example the cylinder (shown in yellow and transparent) is subtracted from the box (shown in red). The cylinder is shifted by  5e<sup>-5</sup> relatively to the box along its axis (the distance between rear faces of the box and cylinder is 5e<sup>-5</sup>).
 
@@ -2117,7 +2119,7 @@ The following results are obtained using Basic Operations and the Fuzzy ones wit
 
 In this example Fuzzy option allows eliminating a very thin part of the result shape produced by Basic algorithm due to misalignment of rear faces of the box and the cylinder. 
 
-@subsubsection occt_algorithms_11a_1_2 Case 2
+#### Case 2
 
 In this example two boxes are fused. One of them has dimensions 10*10*10, and the other is 10*10.000001*10.000001 and adjacent to the first one. There is no gap in this case as the surfaces of the neighboring faces coincide, but one box is slightly greater than the other. 
 
@@ -2131,7 +2133,7 @@ The following results are obtained using Basic Operations and the Fuzzy ones wit
 
 In this example Fuzzy option allows eliminating an extremely narrow face in the result produced by Basic operation.
 
-@subsubsection occt_algorithms_11a_1_3 Case 3
+#### Case 3
 
 In this example the small planar face (shown in orange) is subtracted from the big one (shown in yellow). There is a gap 1e<sup>-5</sup> between the edges of these faces.
 
@@ -2145,7 +2147,7 @@ The following results are obtained using Basic Operations and the Fuzzy ones wit
 
 In this example Fuzzy options eliminated a pin-like protrusion resulting from the gap between edges of the argument faces.
 
-@subsubsection occt_algorithms_11a_1_4 Case 4
+#### Case 4
 
 In this example the small edge is subtracted from the big one. The edges are overlapping not precisely, with max deviation between them equal to 5.28004e<sup>-5</sup>. We will use 6e<sup>-5</sup> value for Fuzzy option.
 
@@ -2158,6 +2160,71 @@ The following results are obtained using Basic Operations and the Fuzzy ones wit
 @figure{/user_guides/boolean_operations/images/boolean_image132.png, "Result of CUT operation obtained with Fuzzy Option"} 
 
 This example stresses not only the validity, but also the performance issue. The usage of Fuzzy option with the appropriate value allows processing the case much faster than with the pure Basic operation. The performance gain for the case is 45 (Processor: Intel(R) Core(TM) i5-3450 CPU @ 3.10 GHz).
+
+@subsection occt_algorithms_11a_2 Gluing Operation
+
+The Gluing operation is the option of the Basic Operations, such as General Fuse, Boolean and Section operations.
+It has been designed to speed up the computation of the interferences among arguments of the operations on special cases, in which the arguments may be overlapping but do not have real intersections between their sub-shapes.
+
+This option cannot be used on the shapes having real intersections, like intersection vertex between edges, or intersection vertex between edge and a face or intersection line between faces:
+@figure{/user_guides/boolean_operations/images/glue_options_image002.png, "Intersecting faces"}
+
+There are two possibilities of overlapping shapes:
+* The shapes can be partially coinciding - the faces do not have intersection curves, but overlapping. The faces of such arguments will be split during the operation. The following picture illustrates such shapes:
+@figure{/user_guides/boolean_operations/images/glue_options_image001.png, "Partially coinciding faces"}
+* The shapes can be fully coinciding - there should be no partial overlapping of the faces, thus no intersection of type EDGE/FACE at all. In such cases the faces will not be split during the operation
+@figure{/user_guides/boolean_operations/images/glue_options_image003.png, "Full coinciding faces of the boxes"}
+
+Thus, there are two possible options - for full and partial coincidence of the shapes.
+
+Even though there are no real intersections on such cases without Gluing options the algorithm will still intersect the sub-shapes of the arguments with interfering bounding boxes.
+
+The performance improvement in gluing mode is achieved by excluding the most time consuming computations and in some case can go up to 90%:
+* Exclude computation of FACE/FACE intersections for partial coincidence;
+* Exclude computation of VERTEX/FACE, EDGE/FACE and FACE/FACE intersections for full coincidence.
+
+By setting the Gluing option for the operation user should guarantee that the arguments are really coinciding. The algorithm does not check this itself. Setting inappropriate option for the operation is likely to lead to incorrect result.
+
+@subsubsection occt_algorithms_11a_2_1 Usage
+
+The Gluing option is an enumeration implemented in BOPAlgo_GlueEnum.hxx:
+* BOPAlgo_GlueOff - default value for the algorithms, Gluing is switched off;
+* BOPAlgo_GlueShift - Glue option for shapes with partial coincidence;
+* BOPAlgo_GlueFull - Glue option for shapes with full coincidence.
+
+#### API level
+For setting the Gluing options for the algorithm it is just necessary to call the SetGlue(const BOPAlgo_Glue) method with appropriate value:
+~~~~
+BOPAlgo_Builder aGF;
+//
+....
+// setting the gluing option to speed up intersection of the arguments
+aGF.SetGlue(BOPAlgo_GlueShift)
+//
+....
+~~~~
+
+#### TCL level
+For setting the Gluing options in DRAW it is necessary to call the <i>bglue</i> command with appropriate value:
+* 0 - default value, Gluing is off;
+* 1 - for partial coincidence;
+* 2 - for full coincidence
+
+~~~~
+bglue 1
+~~~~
+
+@subsubsection occt_algorithms_11a_2_2 Examples
+#### Case1 - Fusing the 64 bspline boxes into one solid
+@figure{/user_guides/boolean_operations/images/glue_options_image004.png, "BSpline Boxes with partial coincidence"}
+
+Performance improvement from using the GlueShift option in this case is about 70 percent.
+
+#### Case2 - Sewing faces of the shape after reading from IGES
+@figure{/user_guides/boolean_operations/images/glue_options_image005.png, "Faces with coinciding but not shared edges"}
+
+Performance improvement in this case is also about 70 percent.
+
 
 @section occt_algorithms_11b Usage 
 

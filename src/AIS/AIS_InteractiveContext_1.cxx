@@ -1205,6 +1205,9 @@ void AIS_InteractiveContext::AddOrRemoveSelected (const Handle(SelectMgr_EntityO
   if (theOwner.IsNull() || !theOwner->HasSelectable())
     return;
 
+  if (!myFilters->IsOk(theOwner) && !theOwner->IsSelected())
+    return;
+
   AIS_SelectStatus aSelStat = mySelection->Select (theOwner);
 
   Standard_Integer aState = aSelStat == AIS_SS_Added ?  1 : 0;
