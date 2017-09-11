@@ -64,7 +64,7 @@ If HTML documentation is not available in your package, you can:
 - Read documentation in source plain text (MarkDown) format found in 
   subfolder [dox](dox)
 
-See [documentation.md](dox/dev_guides/documentation/documentation.md) for details.
+See [documentation.md](./dox/dev_guides/documentation/documentation.md) for details.
 
 Building
 --------
@@ -72,7 +72,7 @@ Building
 In most cases you need to rebuild OCCT on your platform (OS, compiler) before
 using it in your project, to ensure binary compatibility.
 
-Consult the file [building.md](dox/dev_guides/building/building.md) for instructions on
+Consult the file [building.md](./dox/dev_guides/building/building.md) for instructions on
 building OCCT from sources on supported platforms.
 
 Version
